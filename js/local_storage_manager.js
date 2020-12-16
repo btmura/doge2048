@@ -50,14 +50,79 @@ LocalStorageManager.prototype.setBestScore = function (score) {
 
 // Game state getters/setters and clearing
 LocalStorageManager.prototype.getGameState = function () {
-  var stateJSON = this.storage.getItem(this.gameStateKey);
-  return stateJSON ? JSON.parse(stateJSON) : null;
+  return decodeGameStateHash();
 };
 
 LocalStorageManager.prototype.setGameState = function (gameState) {
-  this.storage.setItem(this.gameStateKey, JSON.stringify(gameState));
+  history.replaceState(null, "", `index.html#${encodeGameState(gameState)}`)
 };
 
 LocalStorageManager.prototype.clearGameState = function () {
-  this.storage.removeItem(this.gameStateKey);
+  history.pushState(null, "", `index.html`)
 };
+
+function decodeGameStateHash() {
+  const hash = window.location.hash.slice(1); // Remove # character.
+  if (!hash) {
+    return null;
+  }
+
+  const segments = decodeURIComponent(hash).split(".");
+
+  const gameState = {
+    score: parseInt(segments[0]),
+    over: segments[1] === '1',
+    won: segments[2] === '1',
+    keepPlaying: segments[3] === '1',
+    grid: {
+      size: parseInt(segments[4]),
+      cells: [],
+    },
+  }
+
+  let segmentIndex = 5;
+  for (let i = 0; i < gameState.grid.size; i++) {
+    const row = [];
+    for (let j = 0; j < gameState.grid.size; j++) {
+      const value = segments[segmentIndex];
+      if (value === "0") {
+        row.push(null);
+      } else {
+        row.push({
+          position: {x: i, y: j},
+          value: Math.pow(2, parseInt(value, 16)),
+        });
+      }
+      segmentIndex++;
+    }
+    gameState.grid.cells.push(row);
+  }
+
+  return gameState;
+}
+
+// score":512,"over":false,"won":false,"keepPlaying":false
+function encodeGameState(gameState) {
+  const segments = [
+    `${gameState.score}`,
+    `${gameState.over ? 1 : 0}`,
+    `${gameState.won ? 1 : 0}`,
+    `${gameState.keepPlaying ? 1 : 0}`,
+    `${gameState.grid.size}`,
+  ];
+
+  for (let i = 0; i < gameState.grid.size; i++) {
+    const row = gameState.grid.cells[i];
+    for (let j = 0; j < row.length; j++) {
+      const cell = row[j];
+      if (cell) {
+        segments.push((Math.log(cell.value) / Math.log(2)).toString(16));
+      } else {
+        segments.push("0");
+      }
+    }
+  }
+
+  const hash = segments.join('.');
+  return encodeURIComponent(hash);
+}
