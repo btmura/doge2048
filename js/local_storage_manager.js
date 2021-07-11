@@ -19,7 +19,7 @@ window.fakeStorage = {
 };
 
 function LocalStorageManager() {
-  this.bestScoreKey     = "bestScore";
+  this.bestScoreKey     = "dogeBestScore";
   this.gameStateKey     = "gameState";
 
   var supported = this.localStorageSupported();
